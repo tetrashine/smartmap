@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>Smart Maps</title>
+
+	<!--  css -->
+	<link rel="stylesheet" href="css/main.css">
+	
+	<!-- javascript -->
+	<script src="js/libs/base/base.js"></script>
+	<script src="js/libs/jquery/jquery-2.1.4.js"></script>
+	<script src="js/libs/jsviews.min.js"></script>
+
+	<script src="js/drawings/drawhandler.js"></script>
+	<script src="js/drawings/labelhandler.js"></script>
+	<script src="js/drawings/freehandhandler.js"></script>
+	<script src="js/drawings/gmapdrawhandler.js"></script>
+
+	<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBDUZ8VYSUakCBoxM0RIFcqsYu_brtmv4g&libraries=drawing"></script>
+	<script src="js/libs/maplabel/maplabel.js"></script>
+	
+	<script src="js/mymaps.js"></script>
+	<script>
+	function initMap() {
+		google.maps.Polyline.prototype.isCompletePolyline = function() {
+			var arr = this.latLngs.j[0].j,
+				last = arr.length - 1;
+
+			return (last > 0) && (arr[0].lat() === arr[last].lat()) && (arr[0].lng() === arr[last].lng());
+		}
+
+		google.maps.Polyline.prototype.toPolygon = function() {
+			var path = this.getPath(),
+				latLngs = path.j;
+
+			return new google.maps.Polygon({
+				path: latLngs
+			});
+		}
+
+		google.maps.drawing.OverlayType.FREEHAND = "Freehand";
+		google.maps.drawing.OverlayType.LABEL = "Label";
+
+		var map = new google.maps.Map(document.getElementById("map-canvas"), {
+				center: new google.maps.LatLng(51.508742, -0.120850),
+				zoom: 5,
+				mapTypeId: google.maps.MapTypeId.ROADMAP
+			}),
+			myMaps = [], 
+			mode = null,
+			myMap = new MyMap("My First Map!", map),
+			handlers = {
+				GMap: new GMapDrawHandler(map),
+				Freehand: new FreehandHandler(map),
+				MapLabel: new LabelHandler(map)
+			},
+			buttonEvents =[
+				{
+					id: "map-tool-1",
+					mode: google.maps.drawing.OverlayType.MARKER,
+					handler: handlers.GMap
+				},
+				{
+					id: "map-tool-2",
+					mode: google.maps.drawing.OverlayType.POLYLINE,
+					handler: handlers.GMap
+				},
+				{
+					id: "map-tool-3",
+					mode: google.maps.drawing.OverlayType.FREEHAND,
+					handler: handlers.Freehand
+				},
+				{
+					id: "map-tool-4",
+					mode: google.maps.drawing.OverlayType.LABEL,
+					handler: handlers.MapLabel
+				}
+			];
+
+		myMaps.push(myMap);
+
+		var promise = $.ajax({
+			url: "tmpls/_tmpls.htm",
+		}).done(function(tmpl) {
+			$("body").append(tmpl);
+
+			$.templates("#CustomMapLayer").link("#map-body", myMaps)
+			.on("click", ".feature-delete ", function(e) {
+			    var layerId = $(this).closest(".map-layer").attr("layer-id");
+			    var featureId = $(this).closest(".layer-feature").attr("feature-id");
+
+			    myMap.deleteFeature(layerId, featureId);
+			    $.observable(myMaps).refresh(myMaps);
+			});
+		});
+
+		$(".map-add-layer").on("click", function(){
+			myMap.addLayer();
+
+			$.observable(myMaps).refresh(myMaps);
+		});
+
+		$.each(buttonEvents, function (index, event) {
+			$("#" + event.id).on("click", function() {
+				if (!mode) {
+					mode = event.mode;
+					event.handler.start(mode);
+				} else if (mode === event.mode) {
+					mode = null;
+					event.handler.stop();
+				}
+
+				$(this).toggleClass("selected");
+			});
+		});
+
+		$.each(handlers, function (index, handler) {
+			handler.on("drawend", function(overlay, type) {
+				myMap.addFeature(overlay, type);
+				mode = null;
+				handler.stop();
+
+				$.observable(myMaps).refresh(myMaps);
+				$(".selected").removeClass("selected");
+			});
+		});
+
+		handlers.MapLabel.on("drawstart", function (){
+			var text = null;
+			if (text = prompt("Please enter label", "")) {
+				this.setText(text);
+			}
+		});
+	}
+
+	google.maps.event.addDomListener(window, 'load', initMap);
+	</script>
+</head>
+<body>
+	<div id="my-map">
+		<div class="map-tools">
+			<div id="map-tool-1" class="map-tool hand-icon">Point</div>
+			<div id="map-tool-2" class="map-tool hand-icon">Line</div>
+			<div id="map-tool-3" class="map-tool hand-icon">Free</div>
+			<div id="map-tool-4" class="map-tool hand-icon">Label</div>
+		</div>
+		<div class="map-header"><div class="map-add-layer hand-icon">Add Layer</div></div>
+		<div id="map-body"></div>
+	</div>
+	<div id="map-canvas"></div>
+</body>
+</html>

@@ -1,0 +1,22 @@
+<script id="CustomMapLayer" type="text/x-jquery-tmpl">
+	<div class="map-layers">
+		{^{>name}}
+		{^{for layers}}
+			<div class="map-layer" data-link="layer-id{:id}">
+				<div class="layer-name">{^{>name}}</div>
+				<div class="layer-features">
+					{{for features}}
+						<div class="layer-feature" data-link="feature-id{:id}">
+							<div class="feature-icon" data-link="class{merge:1 toggle=typeClass}" />
+							<div class="feature-name">{^{>name}}</div>
+							<div class="feature-actions">
+								<div class="feature-action feature-edit hand-icon"/>
+								<div class="feature-action feature-delete hand-icon"/>
+							</div>
+						</div>
+					{{/for}}
+				</div>
+			</div>
+		{{/for}}
+	</div>
+</script>
